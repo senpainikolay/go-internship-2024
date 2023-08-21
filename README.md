@@ -1,1 +1,2 @@
-# go-internship-smartdata
+### Author: Nicolae Gherman 
+----
