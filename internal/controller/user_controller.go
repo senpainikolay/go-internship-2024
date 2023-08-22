@@ -28,6 +28,10 @@ func NewUserController(userSvc IUserService) *UserController {
 func (ctrl *UserController) GetById(c *gin.Context) {
 	id_param := c.Query("id")
 	id, _ := strconv.Atoi(id_param)
+	// aici trebuie sa avem procesam eroarea de la convertire. si daca nu e int returnam bad request
+	// vad ca ai facut prin query parameter, mai bine parameter pentru ca asta este ceva concret ce tine de un utilizator
+	// nu e ceva adaugator. Cand noi folosim ca URL parameter, gin singur valideaza acest URL si daca nu exista acest id returneaza 404
+	
 	user := ctrl.userSvc.GetById(id)
 	c.JSON(http.StatusOK, gin.H{
 		"msg": user,
