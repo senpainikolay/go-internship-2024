@@ -32,7 +32,7 @@ func main() {
 
 	userRouter := router.Group("/user")
 	{
-		userRouter.GET("/me", userCtrl.GetById)
+		userRouter.GET("/me", userCtrl.GetById) // aici ar trebui sa avem si un id ex: /me/:id
 		userRouter.POST("/register", userCtrl.Register)
 		userRouter.POST("/login", userCtrl.LogIn)
 		userRouter.DELETE("/unregister", userCtrl.DeleteById)
