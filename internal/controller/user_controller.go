@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"mime/multipart"
 	"net/http"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	"strconv"
@@ -9,10 +10,12 @@ import (
 )
 
 type IUserService interface {
-	GetById(int) string
-	Register(string, string) error
-	LogIn(string, string) string
-	DeleteById(int) error
+	GetById(uint) (models.UserInfo, error)
+	Register(*models.UserModel) error
+	LogIn(*models.UserCredentials) error
+	DeleteById(uint) error
+	UpdateImage(uint, *multipart.File, string) error
+	GetImage(uint) (*[]byte, error)
 }
 
 type UserController struct {
@@ -27,57 +30,176 @@ func NewUserController(userSvc IUserService) *UserController {
 
 func (ctrl *UserController) GetById(c *gin.Context) {
 	id_param := c.Param("id")
-	id, err := strconv.Atoi(id_param)
+	u64, err := strconv.ParseUint(id_param, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID parameter",
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error":   true,
+			"message": "Invalid ID parameter",
 		})
 		return
 	}
 
-	user := ctrl.userSvc.GetById(id)
+	id := uint(u64)
+	user, err := ctrl.userSvc.GetById(id)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"error":   true,
+			"message": "User not Found",
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"msg": user,
+		"user": user,
 	})
 }
 
 func (ctrl *UserController) DeleteById(c *gin.Context) {
 	id_param := c.Param("id")
-	id, err := strconv.Atoi(id_param)
+	u64, err := strconv.ParseUint(id_param, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid ID parameter",
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error":   true,
+			"message": "Invalid ID parameter",
 		})
 		return
 	}
-	ctrl.userSvc.DeleteById(id)
+
+	id := uint(u64)
+	err = ctrl.userSvc.DeleteById(id)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"msg": "deleted request sent.",
+		"msg": "User succefully deleted",
 	})
 }
 
 func (ctrl *UserController) Register(c *gin.Context) {
-	var requestData models.UserCredentials
-
-	if err := c.BindJSON(&requestData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var user models.UserModel
+	if err := c.BindJSON(&user); err != nil {
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
 		return
 	}
 
-	ctrl.userSvc.Register(requestData.Email, requestData.Password)
+	err := ctrl.userSvc.Register(&user)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Registered"})
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "successfully create an user",
+	})
+
 }
 
 func (ctrl *UserController) LogIn(c *gin.Context) {
-	var requestData models.UserCredentials
-
-	if err := c.BindJSON(&requestData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var userCredentials models.UserCredentials
+	if err := c.BindJSON(&userCredentials); err != nil {
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
 		return
 	}
 
-	msg := ctrl.userSvc.LogIn(requestData.Email, requestData.Password)
+	err := ctrl.userSvc.LogIn(&userCredentials)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": msg})
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "succesfully logged in",
+	})
+}
+
+func (ctrl *UserController) UpdateImage(c *gin.Context) {
+
+	err := c.Request.ParseMultipartForm(32 << 20) // approx 32 MB is the maximum file size; 2^20 bytes
+
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	id_param := c.Param("id")
+	u64, err := strconv.ParseUint(id_param, 10, 32)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error":   true,
+			"message": "Invalid ID parameter",
+		})
+		return
+	}
+
+	id := uint(u64)
+
+	file, handler, err := c.Request.FormFile("avatar")
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	defer file.Close()
+
+	err = ctrl.userSvc.UpdateImage(id, &file, handler.Filename)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "image updated succesful",
+	})
+
+}
+
+func (ctrl *UserController) GetImage(c *gin.Context) {
+	id_param := c.Param("id")
+	u64, err := strconv.ParseUint(id_param, 10, 32)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error":   true,
+			"message": "Invalid ID parameter",
+		})
+		return
+	}
+
+	id := uint(u64)
+	binaryImgAddr, err := ctrl.userSvc.GetImage(id)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+
+	}
+	c.Data(http.StatusOK, "image/jpeg", *binaryImgAddr)
+
 }

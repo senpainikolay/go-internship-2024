@@ -1,17 +1,21 @@
 package models
 
+import "gorm.io/gorm"
+
 type UserModel struct {
-	ID       int64  `json:"id"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	*gorm.Model
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	ImgPath  string `json:"avatar"`
 }
 
-type UserEntry struct {
-	ID    int64  `json:"id"`
-	Email string `json:"email"`
+type UserInfo struct {
+	ID      uint   `json:"id"`
+	Email   string `json:"email"`
+	ImgPath string `json:"avatar"`
 }
 
 type UserCredentials struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
 }

@@ -1,32 +1,24 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"senpainikolay/go-internship-smartdata/internal/controller"
+	"senpainikolay/go-internship-smartdata/internal/models"
 	"senpainikolay/go-internship-smartdata/internal/repository"
 	"senpainikolay/go-internship-smartdata/internal/service"
+	"senpainikolay/go-internship-smartdata/pkg/db/postgres"
 
 	"github.com/gin-gonic/gin"
-
-	_ "github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
-const (
-	host     = "localhost"
-	port     = 5432
-	user     = "user"
-	password = "password"
-	dbname   = "test_db"
-)
+var db *gorm.DB
 
 func main() {
 	router := gin.Default()
+	router.Use(gin.Recovery())
 
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, dbname)
-
-	userRepo := repository.NewUserRepository(psqlInfo)
+	userRepo := repository.NewUserRepository(db)
 	userService := service.NewUserService(userRepo)
 	userCtrl := controller.NewUserController(userService)
 
@@ -36,8 +28,18 @@ func main() {
 		userRouter.POST("/register", userCtrl.Register)
 		userRouter.POST("/login", userCtrl.LogIn)
 		userRouter.DELETE("/unregister/:id", userCtrl.DeleteById)
+		userRouter.PUT("/:id/img", userCtrl.UpdateImage)
+		userRouter.GET("/:id/img", userCtrl.GetImage)
 
 	}
 
-	_ = router.Run(":8888") // listen and serve on 0.0.0.0:8888
+	_ = router.Run(":8888")
+}
+
+func init() {
+	db = postgres.NewDBConnection()
+	err := db.AutoMigrate(models.UserModel{})
+	if err != nil {
+		log.Fatalf("failed to migrate user model\n")
+	}
 }

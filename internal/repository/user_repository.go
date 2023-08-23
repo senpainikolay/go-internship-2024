@@ -1,75 +1,71 @@
 package repository
 
 import (
-	"database/sql"
+	"errors"
 	"log"
-	db_handler "senpainikolay/go-internship-smartdata/db"
+	"senpainikolay/go-internship-smartdata/internal/models"
+
+	"gorm.io/gorm"
 )
 
 type UserRepository struct {
-	DBClient string
+	dbClient *gorm.DB
 }
 
-func NewUserRepository(dbClient string) *UserRepository {
-	db, err := sql.Open("postgres", dbClient)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	db_handler.TryCreate(db)
-
+func NewUserRepository(dbClient *gorm.DB) *UserRepository {
 	return &UserRepository{
-		DBClient: dbClient,
+		dbClient: dbClient,
 	}
 }
 
-func (repo *UserRepository) Register(email, pw string) error {
-	db, err := sql.Open("postgres", repo.DBClient)
+func (repo *UserRepository) Register(user *models.UserModel) error {
+	err := repo.dbClient.Debug().
+		Model(models.UserModel{}).
+		Create(user).Error
 	if err != nil {
-		panic(err)
+		log.Printf("failed to insest user in database: %v\n", err)
+		return err
 	}
-	defer db.Close()
-
-	db_handler.CreateUser(db, email, pw)
-
 	return nil
 }
 
-func (repo *UserRepository) LogIn(email, pw string) string {
-	db, err := sql.Open("postgres", repo.DBClient)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-
-	msg, _ := db_handler.LogInUser(db, email, pw)
-
-	return msg
+func (repo *UserRepository) CheckIfEmailExists(mail string) bool {
+	var user models.UserModel
+	err := repo.dbClient.Debug().Model(models.UserModel{}).Find(&user).Where("email = ?", mail).Error
+	return errors.Is(err, gorm.ErrRecordNotFound)
 }
 
-func (repo *UserRepository) DeleteById(id int) error {
-	db, err := sql.Open("postgres", repo.DBClient)
+func (repo *UserRepository) GetByEmail(email string) (models.UserModel, error) {
+	var usr models.UserModel
+	err := repo.dbClient.Model(&models.UserModel{}).Where("email = ?", email).First(&usr).Error
 	if err != nil {
-		panic(err)
+		return models.UserModel{}, err
 	}
-	defer db.Close()
-
-	db_handler.DeleteUser(db, id)
-
-	return nil
+	return usr, nil
 }
 
-func (repo *UserRepository) GetById(id int) string {
-	db, err := sql.Open("postgres", repo.DBClient)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
+func (repo *UserRepository) LogIn(userCredentials *models.UserCredentials) error {
+	// This is logic for an aditional call to the DataBase but can be replaced further by the JWT generation.
+	var usr models.UserModel
+	err := repo.dbClient.Model(&models.UserModel{}).Where("email = ? and password = ?", userCredentials.Email, userCredentials.Password).First(&usr).Error
+	return err
+}
 
-	user, err := db_handler.GetUserById(db, id)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	return user
+func (repo *UserRepository) DeleteById(id uint) error {
+	err := repo.dbClient.Model(&models.UserModel{}).Delete(&models.UserModel{}, id).Error
+	return err
+}
 
+func (repo *UserRepository) GetById(id uint) (models.UserInfo, error) {
+	var usr models.UserModel
+	err := repo.dbClient.Model(&models.UserModel{}).Where("id = ?", id).First(&usr).Error
+	if err != nil {
+		return models.UserInfo{}, err
+	}
+	return models.UserInfo{ID: usr.ID, Email: usr.Email, ImgPath: usr.ImgPath}, nil
+}
+
+func (repo *UserRepository) UpdateImage(id uint, imgPath string) error {
+	err := repo.dbClient.Model(&models.UserModel{}).Where("id = ?", id).Update("ImgPath", imgPath).Error
+	return err
 }
