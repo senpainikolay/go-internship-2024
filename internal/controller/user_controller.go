@@ -9,6 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	NUM_FILE_BYTES = 32
+	SHIFTED_BYTES  = 20
+)
+
 type IUserService interface {
 	GetById(uint) (models.UserInfo, error)
 	Register(*models.UserModel) error
@@ -130,12 +135,10 @@ func (ctrl *UserController) LogIn(c *gin.Context) {
 }
 
 func (ctrl *UserController) UpdateImage(c *gin.Context) {
-	// Shift magic. Foloseste constante.
-	err := c.Request.ParseMultipartForm(32 << 20) // approx 32 MB is the maximum file size; 2^20 bytes
+	err := c.Request.ParseMultipartForm(NUM_FILE_BYTES << SHIFTED_BYTES) // approx 32 MB is the maximum file size; 2^20 bytes
 
 	if err != nil {
-		// StatusUnprocessableEntity sau ContentTooLarge ? https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/413
-		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
+		c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{
 			"error":   true,
 			"message": err.Error(),
 		})

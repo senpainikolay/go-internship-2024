@@ -2,10 +2,11 @@ package service
 
 import (
 	"errors"
+	"io"
 	"mime/multipart"
+	"os"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	utils_hash "senpainikolay/go-internship-smartdata/utils/hash"
-	utils_img "senpainikolay/go-internship-smartdata/utils/image_handler"
 	"strconv"
 )
 
@@ -71,9 +72,15 @@ func (svc *UserService) UpdateImage(id uint, file *multipart.File, fileName stri
 
 	uniqueImgPath := strconv.Itoa(int(id)) + fileName
 
-	err := utils_img.CreateImageFile(file, uniqueImgPath)
+	f, err := os.OpenFile("./uploads/"+uniqueImgPath, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		return err
+		return errors.New("could not create image")
+	}
+	defer f.Close()
+
+	_, err = io.Copy(f, *file)
+	if err != nil {
+		return errors.New("could not copy image from request to the server")
 	}
 
 	err = svc.userRepo.UpdateImage(id, uniqueImgPath)
@@ -91,11 +98,19 @@ func (svc *UserService) GetImage(user_id uint) (*[]byte, error) {
 		return nil, err
 	}
 
-	binaryImgAddr, err := utils_img.ReadImageFile(usr.ImgPath)
+	file, err := os.OpenFile("./uploads/"+usr.ImgPath, os.O_RDONLY, 0)
+	if err != nil {
+		return nil, errors.New("could not open the image")
+	}
+	defer file.Close()
+
+	fileInfo, _ := file.Stat()
+	binaryData := make([]byte, fileInfo.Size())
+	_, err = file.Read(binaryData)
 	if err != nil {
 		return nil, err
 	}
 
-	return binaryImgAddr, nil
+	return &binaryData, nil
 
 }
