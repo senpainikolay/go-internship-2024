@@ -1,3 +1,4 @@
+// Denumirile de package nu le scrim cu _/- sau alte simboluri, ex: imagehandler
 package image_handler
 
 import (
@@ -6,6 +7,10 @@ import (
 	"mime/multipart"
 	"os"
 )
+
+// Dupa parerea mea subiectiva, poate nu am dreptate, dar ce ai tu aici e cam un usecase
+// si ar trebui sa fie in sertvicii
+// sau nu ?
 
 func CreateImageFile(file *multipart.File, imgFileName string) error {
 
