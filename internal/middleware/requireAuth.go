@@ -1,32 +1,31 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
-	jwthelper "senpainikolay/go-internship-smartdata/utils/jwt"
+	"senpainikolay/go-internship-smartdata/internal/auth"
 
 	"github.com/gin-gonic/gin"
 )
 
 func RequireAuth(c *gin.Context) {
 
-	tokenStr, err := c.Cookie("Authorization")
+	accessTk := c.GetHeader("Authorization")
 
-	if err != nil {
+	if accessTk == "" {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 			"error":   true,
-			"message": err.Error(),
+			"message": "no authorization token provided",
 		})
+		return
 	}
 
-	log.Println(tokenStr)
-
-	usrInfo, err := jwthelper.ValidateToken(tokenStr)
+	usrInfo, err := auth.ValidateAccessToken(accessTk)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 			"error":   true,
 			"message": err.Error(),
 		})
+		return
 	}
 
 	c.Set("user", usrInfo)

@@ -30,6 +30,7 @@ func main() {
 	userRouter := router.Group("/user")
 	{
 		userRouter.GET("/me", middleware.RequireAuth, userCtrl.GetById)
+		userRouter.POST("/refreshtoken", userCtrl.RefreshToken)
 		userRouter.POST("/register", userCtrl.Register)
 		userRouter.POST("/login", userCtrl.LogIn)
 		userRouter.DELETE("/unregister/:id", userCtrl.DeleteById)

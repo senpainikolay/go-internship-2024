@@ -5,9 +5,9 @@ import (
 	"io"
 	"mime/multipart"
 	"os"
+	"senpainikolay/go-internship-smartdata/internal/auth"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	utils_hash "senpainikolay/go-internship-smartdata/utils/hash"
-	jwthelper "senpainikolay/go-internship-smartdata/utils/jwt"
 	"strconv"
 )
 
@@ -57,29 +57,29 @@ func (svc *UserService) Register(user *models.UserModel) error {
 	return svc.userRepo.Register(user)
 }
 
-func (svc *UserService) LogIn(userCredentials *models.UserCredentials) (string, error) {
+func (svc *UserService) LogIn(userCredentials *models.UserCredentials) (map[string]string, error) {
 
 	usr, err := svc.userRepo.GetByEmail(userCredentials.Email)
 	if err != nil {
-		return "", errors.New("something wrong with credentials")
+		return nil, errors.New("something wrong with credentials")
 	}
 	err = utils_hash.ComparePasswordHash(usr.Password, userCredentials.Password)
 	if err != nil {
-		return "", errors.New("something wrong with credentials")
+		return nil, errors.New("something wrong with credentials")
 	}
 
-	token, err := jwthelper.GenerateToken(usr.ID)
+	tokensMap, err := auth.GenerateTokenPair(usr.ID)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	idStr := strconv.FormatUint(uint64(usr.ID), 10)
-	err = svc.cacheRepo.Set(idStr, token)
+	err = svc.cacheRepo.Set(idStr, tokensMap["refresh_token"])
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return token, nil
+	return tokensMap, nil
 }
 
 func (svc *UserService) DeleteById(id uint) error {

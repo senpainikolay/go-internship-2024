@@ -3,6 +3,7 @@ package controller
 import (
 	"mime/multipart"
 	"net/http"
+	"senpainikolay/go-internship-smartdata/internal/auth"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	"strconv"
 
@@ -17,7 +18,7 @@ const (
 type IUserService interface {
 	GetById(uint) (models.UserInfo, error)
 	Register(*models.UserModel) error
-	LogIn(*models.UserCredentials) (string, error)
+	LogIn(*models.UserCredentials) (map[string]string, error)
 	DeleteById(uint) error
 	UpdateImage(uint, *multipart.File, string) error
 	GetImage(uint) (*[]byte, error)
@@ -128,7 +129,7 @@ func (ctrl *UserController) LogIn(c *gin.Context) {
 		return
 	}
 
-	token, err := ctrl.userSvc.LogIn(&userCredentials)
+	tokensMap, err := ctrl.userSvc.LogIn(&userCredentials)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
 			"error":   true,
@@ -139,9 +140,10 @@ func (ctrl *UserController) LogIn(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	seconds_to_expire := 3600 * 8
-	c.SetCookie("Authorization", token, seconds_to_expire, "", "", false, true)
+	c.SetCookie("Authorization", tokensMap["refresh_token"], seconds_to_expire, "", "", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
+		"token":   tokensMap["access_token"],
 		"message": "succesfully logged in",
 	})
 }
@@ -223,5 +225,34 @@ func (ctrl *UserController) GetImage(c *gin.Context) {
 
 	}
 	c.Data(http.StatusOK, "image/jpeg", *binaryImgAddr)
+
+}
+
+func (ctrl *UserController) RefreshToken(c *gin.Context) {
+	refresh_token, err := c.Cookie("Authorization")
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	newTokens, err := auth.ValidateRefreshTokenAndGenerateNewPair(refresh_token)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	seconds_to_expire := 3600 * 8
+	c.SetCookie("Authorization", newTokens["refresh_token"], seconds_to_expire, "", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":   newTokens["access_token"],
+		"message": "succesfully logged in",
+	})
 
 }
