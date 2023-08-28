@@ -1,7 +1,7 @@
-package controller
+package htttptransport
 
 import (
-	"mime/multipart"
+	"io/ioutil"
 	"net/http"
 	"senpainikolay/go-internship-smartdata/internal/auth"
 	"senpainikolay/go-internship-smartdata/internal/models"
@@ -20,7 +20,7 @@ type IUserService interface {
 	Register(*models.UserModel) error
 	LogIn(*models.UserCredentials) (map[string]string, error)
 	DeleteById(uint) error
-	UpdateImage(uint, *multipart.File, string) error
+	UpdateImage(uint, *[]byte, string) error
 	GetImage(uint) (*[]byte, error)
 }
 
@@ -188,7 +188,16 @@ func (ctrl *UserController) UpdateImage(c *gin.Context) {
 
 	defer file.Close()
 
-	err = ctrl.userSvc.UpdateImage(usr.ID, &file, handler.Filename)
+	fileContents, err := ioutil.ReadAll(file)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": "Unable to read file contents",
+		})
+		return
+	}
+
+	err = ctrl.userSvc.UpdateImage(usr.ID, &fileContents, handler.Filename)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   true,

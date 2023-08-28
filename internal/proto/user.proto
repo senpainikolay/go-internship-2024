@@ -1,0 +1,59 @@
+// protoc --go_out=internal/pb --go_opt=paths=source_relative --go-grpc_out=internal/pb --go-grpc_opt=paths=source_relative internal/proto/user.proto
+
+
+syntax = "proto3";
+package proto;
+
+option go_package = "senpainikolay/go-internship-smartdata/proto"; 
+
+import "google/protobuf/empty.proto";
+ 
+
+message UserEntry{
+    string email = 1; 
+    string password = 2;  
+    optional string img_path = 3; 
+
+}    
+
+
+message CreateUserRequest { UserEntry user_entry=1; }  
+message LogInUserRequest { UserEntry user_entry =1; }  
+message GetUserByIdRequest { uint64 id =1; }  
+message DeleteUserByIdRequest { uint64 id =1; }   
+message GetUserImageRequest { uint64 usr_id =1; }    
+message UploadUserImageRequest {  uint64 usr_id = 1; bytes img = 2;  }   
+
+
+
+
+message UserResponse { 
+    uint64 id =1;
+    string email =2;
+    string img_path =3; 
+    } 
+
+message LogInResponse { 
+    string access_token =1;
+    string refresh_token =2; 
+    } 
+
+
+message AvatarResponse { 
+        uint64 usr_id =1; 
+        bytes img =2; 
+    }
+
+service UserService {
+    rpc RegisterUser(CreateUserRequest) returns (UserResponse) {}
+    rpc LogInUser(LogInUserRequest) returns (LogInResponse) {}
+    rpc GetUserById(GetUserByIdRequest) returns (UserResponse) {}
+    rpc DeleteUserById(DeleteUserByIdRequest) returns (google.protobuf.Empty) {} 
+    rpc GetImage(GetUserImageRequest) returns (AvatarResponse) {} 
+    rpc UploadImage(UploadUserImageRequest) returns (AvatarResponse) {}
+
+  }
+  
+
+
+

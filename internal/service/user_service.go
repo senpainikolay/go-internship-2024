@@ -1,9 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"errors"
 	"io"
-	"mime/multipart"
 	"os"
 	"senpainikolay/go-internship-smartdata/internal/auth"
 	"senpainikolay/go-internship-smartdata/internal/models"
@@ -86,7 +86,7 @@ func (svc *UserService) DeleteById(id uint) error {
 	return svc.userRepo.DeleteById(id)
 }
 
-func (svc *UserService) UpdateImage(id uint, file *multipart.File, fileName string) error {
+func (svc *UserService) UpdateImage(id uint, file *[]byte, fileName string) error {
 
 	uniqueImgPath := strconv.Itoa(int(id)) + fileName
 
@@ -96,7 +96,7 @@ func (svc *UserService) UpdateImage(id uint, file *multipart.File, fileName stri
 	}
 	defer f.Close()
 
-	_, err = io.Copy(f, *file)
+	_, err = io.Copy(f, bytes.NewReader(*file))
 	if err != nil {
 		return errors.New("could not copy image from request to the server")
 	}
