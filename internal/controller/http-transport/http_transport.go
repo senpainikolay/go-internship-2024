@@ -1,8 +1,9 @@
-package controller
+package htttptransport
 
 import (
-	"mime/multipart"
+	"io/ioutil"
 	"net/http"
+	"senpainikolay/go-internship-smartdata/internal/auth"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	"strconv"
 
@@ -17,9 +18,9 @@ const (
 type IUserService interface {
 	GetById(uint) (models.UserInfo, error)
 	Register(*models.UserModel) error
-	LogIn(*models.UserCredentials) error
+	LogIn(*models.UserCredentials) (map[string]string, error)
 	DeleteById(uint) error
-	UpdateImage(uint, *multipart.File, string) error
+	UpdateImage(uint, *[]byte, string) error
 	GetImage(uint) (*[]byte, error)
 }
 
@@ -34,18 +35,26 @@ func NewUserController(userSvc IUserService) *UserController {
 }
 
 func (ctrl *UserController) GetById(c *gin.Context) {
-	id_param := c.Param("id")
-	u64, err := strconv.ParseUint(id_param, 10, 32)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+
+	val, ok := c.Get("user")
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   true,
-			"message": "Invalid ID parameter",
+			"message": "user info not taken from context ",
 		})
 		return
 	}
 
-	id := uint(u64)
-	user, err := ctrl.userSvc.GetById(id)
+	usr, ok := val.(models.UserJWTInfo)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": "wrong user info saved in context",
+		})
+		return
+	}
+
+	user, err := ctrl.userSvc.GetById(usr.ID)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
 			"error":   true,
@@ -120,7 +129,7 @@ func (ctrl *UserController) LogIn(c *gin.Context) {
 		return
 	}
 
-	err := ctrl.userSvc.LogIn(&userCredentials)
+	tokensMap, err := ctrl.userSvc.LogIn(&userCredentials)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, gin.H{
 			"error":   true,
@@ -129,7 +138,12 @@ func (ctrl *UserController) LogIn(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	c.SetSameSite(http.SameSiteLaxMode)
+	seconds_to_expire := 3600 * 8
+	c.SetCookie("Authorization", tokensMap["refresh_token"], seconds_to_expire, "", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":   tokensMap["access_token"],
 		"message": "succesfully logged in",
 	})
 }
@@ -145,17 +159,23 @@ func (ctrl *UserController) UpdateImage(c *gin.Context) {
 		return
 	}
 
-	id_param := c.Param("id")
-	u64, err := strconv.ParseUint(id_param, 10, 32)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+	val, ok := c.Get("user")
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   true,
-			"message": "Invalid ID parameter",
+			"message": "user info not taken from context ",
 		})
 		return
 	}
 
-	id := uint(u64)
+	usr, ok := val.(models.UserJWTInfo)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": "wrong user info saved in context",
+		})
+		return
+	}
 
 	file, handler, err := c.Request.FormFile("avatar")
 	if err != nil {
@@ -168,7 +188,16 @@ func (ctrl *UserController) UpdateImage(c *gin.Context) {
 
 	defer file.Close()
 
-	err = ctrl.userSvc.UpdateImage(id, &file, handler.Filename)
+	fileContents, err := ioutil.ReadAll(file)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": "Unable to read file contents",
+		})
+		return
+	}
+
+	err = ctrl.userSvc.UpdateImage(usr.ID, &fileContents, handler.Filename)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   true,
@@ -205,5 +234,34 @@ func (ctrl *UserController) GetImage(c *gin.Context) {
 
 	}
 	c.Data(http.StatusOK, "image/jpeg", *binaryImgAddr)
+
+}
+
+func (ctrl *UserController) RefreshToken(c *gin.Context) {
+	refresh_token, err := c.Cookie("Authorization")
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	newTokens, err := auth.ValidateRefreshTokenAndGenerateNewPair(refresh_token)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	seconds_to_expire := 3600 * 8
+	c.SetCookie("Authorization", newTokens["refresh_token"], seconds_to_expire, "", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{
+		"token":   newTokens["access_token"],
+		"message": "succesfully logged in",
+	})
 
 }

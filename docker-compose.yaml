@@ -1,12 +1,30 @@
 version: '3.9'
 services:
   postgres:
+    container_name: postgres_intern
     image: postgres:14-alpine
     ports:
       - 5432:5432
     volumes:
-      - ~/apps/postgres:/var/lib/postgresql/data
+      - postgres-db:/data/postgres
     environment:
       - POSTGRES_PASSWORD=password
       - POSTGRES_USER=user
-      - POSTGRES_DB=test_db
+      - POSTGRES_DB=test_db  
+
+  cache:
+    image: redis:6.2-alpine 
+    container_name: redis_intern
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes: 
+      - cache:/data 
+    environment:
+      - REDIS_PASSWORD=password
+
+volumes:
+  postgres-db:
+    driver: local 
+  cache:
+    driver: local 

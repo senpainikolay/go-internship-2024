@@ -15,6 +15,10 @@ type UserInfo struct {
 	ImgPath string `json:"avatar"`
 }
 
+type UserJWTInfo struct {
+	ID uint `json:"id"`
+}
+
 type UserCredentials struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`

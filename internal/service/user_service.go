@@ -1,10 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"errors"
 	"io"
-	"mime/multipart"
 	"os"
+	"senpainikolay/go-internship-smartdata/internal/auth"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	utils_hash "senpainikolay/go-internship-smartdata/utils/hash"
 	"strconv"
@@ -20,13 +21,20 @@ type IUserRepository interface {
 	UpdateImage(uint, string) error
 }
 
-type UserService struct {
-	userRepo IUserRepository
+type ICacheRepository interface {
+	Get(string) (string, error)
+	Set(string, string) error
 }
 
-func NewUserService(userRepo IUserRepository) *UserService {
+type UserService struct {
+	userRepo  IUserRepository
+	cacheRepo ICacheRepository
+}
+
+func NewUserService(userRepo IUserRepository, cacheRepo ICacheRepository) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:  userRepo,
+		cacheRepo: cacheRepo,
 	}
 }
 
@@ -49,26 +57,36 @@ func (svc *UserService) Register(user *models.UserModel) error {
 	return svc.userRepo.Register(user)
 }
 
-func (svc *UserService) LogIn(userCredentials *models.UserCredentials) error {
+func (svc *UserService) LogIn(userCredentials *models.UserCredentials) (map[string]string, error) {
 
 	usr, err := svc.userRepo.GetByEmail(userCredentials.Email)
 	if err != nil {
-		return errors.New("something wrong with credentials")
+		return nil, errors.New("something wrong with credentials")
 	}
 	err = utils_hash.ComparePasswordHash(usr.Password, userCredentials.Password)
 	if err != nil {
-		return errors.New("something wrong with credentials")
+		return nil, errors.New("something wrong with credentials")
 	}
-	// This make an aditional call to the DataBase but can be replaced further by the JWT generation.
-	userCredentials.Password = usr.Password
-	return svc.userRepo.LogIn(userCredentials)
+
+	tokensMap, err := auth.GenerateTokenPair(usr.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	idStr := strconv.FormatUint(uint64(usr.ID), 10)
+	err = svc.cacheRepo.Set(idStr, tokensMap["refresh_token"])
+	if err != nil {
+		return nil, err
+	}
+
+	return tokensMap, nil
 }
 
 func (svc *UserService) DeleteById(id uint) error {
 	return svc.userRepo.DeleteById(id)
 }
 
-func (svc *UserService) UpdateImage(id uint, file *multipart.File, fileName string) error {
+func (svc *UserService) UpdateImage(id uint, file *[]byte, fileName string) error {
 
 	uniqueImgPath := strconv.Itoa(int(id)) + fileName
 
@@ -78,7 +96,7 @@ func (svc *UserService) UpdateImage(id uint, file *multipart.File, fileName stri
 	}
 	defer f.Close()
 
-	_, err = io.Copy(f, *file)
+	_, err = io.Copy(f, bytes.NewReader(*file))
 	if err != nil {
 		return errors.New("could not copy image from request to the server")
 	}
