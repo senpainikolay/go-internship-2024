@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	amqptransport "senpainikolay/go-internship-smartdata/internal/controller/amqp-transport"
 	httpAPI "senpainikolay/go-internship-smartdata/internal/controller/http-transport"
 	grpcAPI "senpainikolay/go-internship-smartdata/internal/controller/rpc-transport"
 	"senpainikolay/go-internship-smartdata/internal/middleware"
@@ -51,7 +52,8 @@ func main() {
 		wg.Done()
 	}()
 
-	wg.Wait()
+	log.Printf("starting consumer RabbitMq ...\n")
+	amqptransport.Serve(userService)
 
 	_ = router.Run(":8888")
 }
