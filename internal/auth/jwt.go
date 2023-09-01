@@ -67,6 +67,8 @@ func ValidateAccessToken(tokenStr string) (models.UserJWTInfo, error) {
 	}
 }
 
+
+// multa logica, desparte pe functional
 func ValidateRefreshTokenAndGenerateNewPair(tokenStr string) (map[string]string, error) {
 
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
