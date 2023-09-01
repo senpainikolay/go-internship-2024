@@ -48,6 +48,10 @@ func (s *UserServer) GetUserById(ctx context.Context, req *pb.GetUserByIdRequest
 	if err != nil {
 		return &pb.UserResponse{}, err
 	}
+
+	// poti aici sa folosesti biblioteca json sau protojson
+	// pentru a create dintr-o structura proto
+	// in una declarata de tine
 	return &pb.UserResponse{
 		Id:      uint64(usrInfo.ID),
 		Email:   usrInfo.Email,
