@@ -2,15 +2,16 @@ package main
 
 import (
 	"log"
-	httpAPI "senpainikolay/go-internship-smartdata/internal/controller/http-transport"
-	grpcAPI "senpainikolay/go-internship-smartdata/internal/controller/rpc-transport"
+	"senpainikolay/go-internship-smartdata/internal/chat"
+	amqptransport "senpainikolay/go-internship-smartdata/internal/controller/amqp-transport"
+	htttptransport "senpainikolay/go-internship-smartdata/internal/controller/http-transport"
+	rpctransport "senpainikolay/go-internship-smartdata/internal/controller/rpc-transport"
 	"senpainikolay/go-internship-smartdata/internal/middleware"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	"senpainikolay/go-internship-smartdata/internal/repository"
 	"senpainikolay/go-internship-smartdata/internal/service"
 	"senpainikolay/go-internship-smartdata/pkg/db/postgres"
 	redisdb "senpainikolay/go-internship-smartdata/pkg/db/redis"
-	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -27,7 +28,7 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	cacheRepo := repository.NewCacheRepository(redis_db)
 	userService := service.NewUserService(userRepo, cacheRepo)
-	userCtrl := httpAPI.NewUserController(userService)
+	userCtrl := htttptransport.NewUserController(userService)
 
 	userRouter := router.Group("/user")
 	{
@@ -42,16 +43,23 @@ func main() {
 
 	}
 
-	var wg sync.WaitGroup
+	// One Room Chat
+	r := chat.NewRoom()
+	go r.Run()
+	chatRouter := router.Group("/chat")
+	{
+		chatRouter.GET("/room1", r.ServeHTTP)
+	}
 
-	wg.Add(1)
+	// gRPC
 	go func() {
 		log.Printf("starting gRPC API server...\n")
-		grpcAPI.Serve(userService, ":6666")
-		wg.Done()
+		rpctransport.Serve(userService, ":6666")
 	}()
 
-	wg.Wait()
+	// RabbitMQ
+	log.Printf("starting consumer RabbitMq ...\n")
+	amqptransport.Serve(userService)
 
 	_ = router.Run(":8888")
 }
