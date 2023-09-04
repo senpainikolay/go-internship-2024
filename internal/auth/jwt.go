@@ -48,12 +48,7 @@ func GenerateTokenPair(id uint) (map[string]string, error) {
 
 func ValidateAccessToken(tokenStr string) (models.UserJWTInfo, error) {
 
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-		}
-		return []byte(os.Getenv("SECRET_ACCESS_TOKEN")), nil
-	})
+	token, err := parseJwt(tokenStr, os.Getenv("SECRET_ACCESS_TOKEN"))
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		if float64(time.Now().Unix()) > claims["exp"].(float64) {
@@ -67,30 +62,32 @@ func ValidateAccessToken(tokenStr string) (models.UserJWTInfo, error) {
 	}
 }
 
+func ValidateRefreshToken(tokenStr string) (uint, error) {
 
-// multa logica, desparte pe functional
-func ValidateRefreshTokenAndGenerateNewPair(tokenStr string) (map[string]string, error) {
+	token, err := parseJwt(tokenStr, os.Getenv("SECRET_REFRESH_TOKEN"))
+	if err != nil {
+		return 0, err
+	}
 
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if float64(time.Now().Unix()) > claims["exp"].(float64) {
+			return 0, errors.New("token have expired, log in again")
+		}
+
+		return uint(claims["sub"].(float64)), nil
+
+	} else {
+		return 0, errors.New("something wrong with the token")
+	}
+}
+
+func parseJwt(tokenStr string, secret_token string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(os.Getenv("SECRET_REFRESH_TOKEN")), nil
+		return []byte(secret_token), nil
 	})
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		if float64(time.Now().Unix()) > claims["exp"].(float64) {
-			return nil, errors.New("token have expired, log in again")
-		}
-
-		newTokens, err := GenerateTokenPair(uint(claims["sub"].(float64)))
-		if err != nil {
-			return nil, err
-		}
-
-		return newTokens, nil
-
-	} else {
-		return nil, err
-	}
+	return token, err
 }

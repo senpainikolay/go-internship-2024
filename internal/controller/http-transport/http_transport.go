@@ -247,7 +247,7 @@ func (ctrl *UserController) RefreshToken(c *gin.Context) {
 		return
 	}
 
-	newTokens, err := auth.ValidateRefreshTokenAndGenerateNewPair(refresh_token)
+	usrId, err := auth.ValidateRefreshToken(refresh_token)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   true,
@@ -255,6 +255,16 @@ func (ctrl *UserController) RefreshToken(c *gin.Context) {
 		})
 		return
 	}
+	newTokens, err := auth.GenerateTokenPair(usrId)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+
+	}
+
 	c.SetSameSite(http.SameSiteLaxMode)
 	seconds_to_expire := 3600 * 8
 	c.SetCookie("Authorization", newTokens["refresh_token"], seconds_to_expire, "", "", false, true)
