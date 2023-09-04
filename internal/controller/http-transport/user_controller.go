@@ -4,15 +4,19 @@ import (
 	"io/ioutil"
 	"net/http"
 	"senpainikolay/go-internship-smartdata/internal/auth"
+	"senpainikolay/go-internship-smartdata/internal/chat"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 const (
-	NUM_FILE_BYTES = 32
-	SHIFTED_BYTES  = 20
+	NUM_FILE_BYTES      = 32
+	SHIFTED_BYTES       = 20
+	wsSocketBufferSize  = 1024
+	wsMessageBufferSize = 256
 )
 
 type IUserService interface {
@@ -264,4 +268,52 @@ func (ctrl *UserController) RefreshToken(c *gin.Context) {
 		"message": "succesfully logged in",
 	})
 
+}
+
+func (ctrl *UserController) UpgradeToSocket(chat_handler *chat.Chat) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		val, ok := c.Get("user")
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error":   true,
+				"message": "user info not taken from context ",
+			})
+			return
+		}
+
+		usr, ok := val.(models.UserJWTInfo)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error":   true,
+				"message": "wrong user info saved in context",
+			})
+			return
+		}
+
+		upgrader := &websocket.Upgrader{ReadBufferSize: wsSocketBufferSize, WriteBufferSize: wsMessageBufferSize}
+
+		socket, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				"error":   true,
+				"message": "can't upgrade to websocket",
+			})
+			return
+		}
+
+		client := &chat.Client{
+			Id:      usr.ID,
+			Socket:  socket,
+			Receive: make(chan []byte, wsMessageBufferSize),
+			Chat:    chat_handler,
+		}
+
+		chat_handler.Join <- client
+
+		defer func() { chat_handler.Leave <- client }()
+		go client.Write()
+		client.Read()
+
+	}
 }
