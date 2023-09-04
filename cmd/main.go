@@ -30,6 +30,10 @@ func main() {
 	userService := service.NewUserService(userRepo, cacheRepo)
 	userCtrl := htttptransport.NewUserController(userService)
 
+	// Chat  Handelr
+	chat_handler := chat.NewChat()
+	go chat_handler.Run()
+
 	userRouter := router.Group("/user")
 	{
 
@@ -40,15 +44,8 @@ func main() {
 		userRouter.DELETE("/unregister/:id", userCtrl.DeleteById)
 		userRouter.PUT("/img", middleware.RequireAuth, userCtrl.UpdateImage)
 		userRouter.GET("/:id/img", userCtrl.GetImage)
+		userRouter.GET("/ws", middleware.RequireAuth, userCtrl.UpgradeToSocket(chat_handler))
 
-	}
-
-	// One Room Chat
-	r := chat.NewRoom()
-	go r.Run()
-	chatRouter := router.Group("/chat")
-	{
-		chatRouter.GET("/room1", r.ServeHTTP)
 	}
 
 	// gRPC
