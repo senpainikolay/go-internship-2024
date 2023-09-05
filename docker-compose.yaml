@@ -29,10 +29,20 @@ services:
     container_name: rabbitMQ_intern
     ports:
       - 5672:5672
-      - 15672:15672
+      - 15672:15672 
+
+  mongodb:
+    image: mongo:6-jammy
+    container_name: mongo_intern
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb:/data/mongodb
 
 volumes:
   postgres-db:
     driver: local 
   cache:
-    driver: local  
+    driver: local 
+  mongodb:
+    driver: local

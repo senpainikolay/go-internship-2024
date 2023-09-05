@@ -2,31 +2,42 @@ package main
 
 import (
 	"log"
+	"os"
 	"senpainikolay/go-internship-smartdata/internal/chat"
 	amqptransport "senpainikolay/go-internship-smartdata/internal/controller/amqp-transport"
 	htttptransport "senpainikolay/go-internship-smartdata/internal/controller/http-transport"
 	rpctransport "senpainikolay/go-internship-smartdata/internal/controller/rpc-transport"
 	"senpainikolay/go-internship-smartdata/internal/middleware"
 	"senpainikolay/go-internship-smartdata/internal/models"
-	"senpainikolay/go-internship-smartdata/internal/repository"
 	"senpainikolay/go-internship-smartdata/internal/service"
+	mongodb "senpainikolay/go-internship-smartdata/pkg/db/mongo"
 	"senpainikolay/go-internship-smartdata/pkg/db/postgres"
 	redisdb "senpainikolay/go-internship-smartdata/pkg/db/redis"
 
+	mongodbrepo "senpainikolay/go-internship-smartdata/internal/repository/mongodb-repo"
+	postgresrepo "senpainikolay/go-internship-smartdata/internal/repository/postgres-repo"
+	redisrepo "senpainikolay/go-internship-smartdata/internal/repository/redis-repo"
+
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/yaml.v3"
 	"gorm.io/gorm"
 )
 
 var db *gorm.DB
+var mongo_db *mongo.Client
 var redis_db *redis.Client
 
 func main() {
+	config := configInit()
+
 	router := gin.Default()
 	router.Use(gin.Recovery())
 
-	userRepo := repository.NewUserRepository(db)
-	cacheRepo := repository.NewCacheRepository(redis_db)
+	userRepo := configRepo()
+
+	cacheRepo := redisrepo.NewCacheRepository(redis_db)
 	userService := service.NewUserService(userRepo, cacheRepo)
 	userCtrl := htttptransport.NewUserController(userService)
 
@@ -58,14 +69,41 @@ func main() {
 	log.Printf("starting consumer RabbitMq ...\n")
 	amqptransport.Serve(userService)
 
-	_ = router.Run(":8888")
+	_ = router.Run(config.Port)
+}
+
+func configInit() models.Config {
+	yamlFile := "config/config.yaml"
+
+	data, err := os.ReadFile(yamlFile)
+	if err != nil {
+		panic(err)
+	}
+	var config models.Config
+
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		panic(err)
+	}
+	return config
+
+}
+func configRepo() service.IUserRepository {
+	config := configInit()
+	if config.Enviroment == "dev" {
+		return mongodbrepo.NewUserRepository(mongo_db)
+	}
+
+	return postgresrepo.NewUserRepository(db)
 }
 
 func init() {
+	//config := configInit()
+	mongo_db = mongodb.NewDBConnection()
 	db = postgres.NewDBConnection()
 	redis_db = redisdb.NewRedisClient()
 	err := db.AutoMigrate(models.UserModel{})
 	if err != nil {
 		log.Fatalf("failed to migrate user model\n")
 	}
+
 }
