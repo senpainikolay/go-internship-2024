@@ -4,9 +4,7 @@ import (
 	"log"
 	"os"
 	"senpainikolay/go-internship-smartdata/internal/chat"
-	amqptransport "senpainikolay/go-internship-smartdata/internal/controller/amqp-transport"
 	htttptransport "senpainikolay/go-internship-smartdata/internal/controller/http-transport"
-	rpctransport "senpainikolay/go-internship-smartdata/internal/controller/rpc-transport"
 	"senpainikolay/go-internship-smartdata/internal/middleware"
 	"senpainikolay/go-internship-smartdata/internal/models"
 	"senpainikolay/go-internship-smartdata/internal/service"
@@ -59,15 +57,15 @@ func main() {
 
 	}
 
-	// gRPC
-	go func() {
-		log.Printf("starting gRPC API server...\n")
-		rpctransport.Serve(userService, ":6666")
-	}()
+	// // gRPC
+	// go func() {
+	// 	log.Printf("starting gRPC API server...\n")
+	// 	rpctransport.Serve(userService, ":6666")
+	// }()
 
-	// RabbitMQ
-	log.Printf("starting consumer RabbitMq ...\n")
-	amqptransport.Serve(userService)
+	// // RabbitMQ
+	// log.Printf("starting consumer RabbitMq ...\n")
+	// amqptransport.Serve(userService)
 
 	_ = router.Run(config.Port)
 }
@@ -90,6 +88,7 @@ func configInit() models.Config {
 func configRepo() service.IUserRepository {
 	config := configInit()
 	if config.Enviroment == "dev" {
+		log.Println("niggainits")
 		return mongodbrepo.NewUserRepository(mongo_db)
 	}
 
@@ -97,8 +96,8 @@ func configRepo() service.IUserRepository {
 }
 
 func init() {
-	//config := configInit()
 	mongo_db = mongodb.NewDBConnection()
+	mongodb.MigrateCollections()
 	db = postgres.NewDBConnection()
 	redis_db = redisdb.NewRedisClient()
 	err := db.AutoMigrate(models.UserModel{})

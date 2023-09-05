@@ -35,7 +35,7 @@ services:
     image: mongo:6-jammy
     container_name: mongo_intern
     ports:
-      - '27017:27017'
+      - '2717:27017'
     volumes:
       - mongodb:/data/mongodb
 

@@ -33,7 +33,10 @@ func (repo *UserRepository) Register(user *models.UserModel) error {
 		ImgPath:  user.ImgPath,
 	}
 
-	_, insertErr := collection.InsertOne(context.TODO(), userModel)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, insertErr := collection.InsertOne(ctx, userModel)
 	if insertErr != nil {
 		return insertErr
 	}
@@ -41,11 +44,17 @@ func (repo *UserRepository) Register(user *models.UserModel) error {
 }
 
 func (repo *UserRepository) CheckIfEmailExists(mail string) bool {
+
 	var user mongomodels.User
 	collection := repo.dbClient.Database("test_db").Collection("users")
 	filter := bson.M{"email": mail}
-	err := collection.FindOne(context.TODO(), filter).Decode(&user)
-	return errors.Is(err, mongo.ErrNoDocuments)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	err := collection.FindOne(ctx, filter).Decode(&user)
+
+	return !errors.Is(err, mongo.ErrNoDocuments)
 }
 
 func (repo *UserRepository) GetByEmail(email string) (models.UserModel, error) {
