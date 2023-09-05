@@ -88,7 +88,6 @@ func configInit() models.Config {
 func configRepo() service.IUserRepository {
 	config := configInit()
 	if config.Enviroment == "dev" {
-		log.Println("niggainits")
 		return mongodbrepo.NewUserRepository(mongo_db)
 	}
 
