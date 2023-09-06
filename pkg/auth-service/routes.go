@@ -46,7 +46,7 @@ func (ctrl *UserController) GetById(c *gin.Context) {
 	if !ok {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   true,
-			"message": "user info not taken from context ",
+			"message": "required authentication",
 		})
 		return
 	}
@@ -55,7 +55,7 @@ func (ctrl *UserController) GetById(c *gin.Context) {
 	if !ok {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error":   true,
-			"message": "wrong user info saved in context",
+			"message": "wrong info extrated from token",
 		})
 		return
 	}
