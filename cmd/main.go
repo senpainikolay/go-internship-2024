@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	Host       string `yaml:"HOST"`
-	Port       string `yaml:"PORT"`
-	Enviroment string `yaml:"ENVIRONMENT"`
+	Host        string `yaml:"HOST"`
+	Port        string `yaml:"PORT"`
+	Enviroment  string `yaml:"ENVIRONMENT"`
+	UserSvcPort string `yaml:"SVC_PORT1"`
 }
 
 func main() {
