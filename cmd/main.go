@@ -20,7 +20,7 @@ func main() {
 	router := gin.Default()
 	router.Use(gin.Recovery())
 
-	usrSvcClient := authservice.NewUserServiceClient()
+	usrSvcClient := authservice.NewUserServiceClient(config.Port)
 	usrController := authservice.NewUserController(*usrSvcClient)
 	authservice.AttachUserAuthRoutesToRouter(router, usrController)
 

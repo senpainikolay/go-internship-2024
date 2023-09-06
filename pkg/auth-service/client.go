@@ -2,13 +2,23 @@ package authservice
 
 import (
 	"context"
+	"log"
 	"senpainikolay/go-internship-smartdata/gateway/pkg/auth-service/models"
 	pb "senpainikolay/go-internship-smartdata/gateway/pkg/auth-service/pb"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-func NewUserServiceClient() *UserServiceClient {
-	return &UserServiceClient{}
+func NewUserServiceClient(port string) *UserServiceClient {
+	conn, err := grpc.Dial(port, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	return &UserServiceClient{
+		pb.NewUserServiceClient(conn),
+	}
 }
 
 type UserServiceClient struct {
