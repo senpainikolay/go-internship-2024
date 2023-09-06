@@ -3,8 +3,8 @@ package mongodbrepo
 import (
 	"context"
 	"errors"
-	"senpainikolay/go-internship-smartdata/internal/models"
-	mongomodels "senpainikolay/go-internship-smartdata/internal/models/mongo-models"
+	"senpainikolay/go-internship-smartdata/auth-service/internal/models"
+	mongomodels "senpainikolay/go-internship-smartdata/auth-service/internal/models/mongo-models"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"

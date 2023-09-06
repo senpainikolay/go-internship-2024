@@ -3,7 +3,7 @@ package postgresrepo
 import (
 	"errors"
 	"log"
-	"senpainikolay/go-internship-smartdata/internal/models"
+	"senpainikolay/go-internship-smartdata/auth-service/internal/models"
 
 	"gorm.io/gorm"
 )

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"senpainikolay/go-internship-smartdata/internal/models"
+	"senpainikolay/go-internship-smartdata/auth-service/internal/models"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"

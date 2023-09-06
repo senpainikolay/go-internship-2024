@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 	"net"
-	"senpainikolay/go-internship-smartdata/internal/models"
-	pb "senpainikolay/go-internship-smartdata/internal/pb"
+	"senpainikolay/go-internship-smartdata/auth-service/internal/models"
+	pb "senpainikolay/go-internship-smartdata/auth-service/internal/pb"
 	"strconv"
 
 	"google.golang.org/grpc"

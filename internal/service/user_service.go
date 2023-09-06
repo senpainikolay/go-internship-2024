@@ -5,9 +5,9 @@ import (
 	"errors"
 	"io"
 	"os"
-	"senpainikolay/go-internship-smartdata/internal/auth"
-	"senpainikolay/go-internship-smartdata/internal/models"
-	utils_hash "senpainikolay/go-internship-smartdata/utils/hash"
+	"senpainikolay/go-internship-smartdata/auth-service/internal/auth"
+	"senpainikolay/go-internship-smartdata/auth-service/internal/models"
+	utils_hash "senpainikolay/go-internship-smartdata/auth-service/utils/hash"
 	"strconv"
 )
 
