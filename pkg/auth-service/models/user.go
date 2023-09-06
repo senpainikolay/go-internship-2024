@@ -21,3 +21,7 @@ type UserInfo struct {
 	Email   string `json:"email"`
 	ImgPath string `json:"avatar"`
 }
+
+type UserJWTInfo struct {
+	ID uint `json:"id"`
+}

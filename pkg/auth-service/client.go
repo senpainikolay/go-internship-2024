@@ -15,7 +15,7 @@ type UserServiceClient struct {
 	pb.UserServiceClient
 }
 
-func (client *UserServiceClient) GetById(id int) (*models.UserInfo, error) {
+func (client *UserServiceClient) GetById(id uint) (*models.UserInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
@@ -31,7 +31,7 @@ func (client *UserServiceClient) GetById(id int) (*models.UserInfo, error) {
 	}, nil
 }
 
-func (client *UserServiceClient) DeleteById(id int) error {
+func (client *UserServiceClient) DeleteById(id uint) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
@@ -40,7 +40,7 @@ func (client *UserServiceClient) DeleteById(id int) error {
 	return err
 }
 
-func (client *UserServiceClient) Register(usr models.UserModel) error {
+func (client *UserServiceClient) Register(usr *models.UserModel) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
@@ -54,7 +54,7 @@ func (client *UserServiceClient) Register(usr models.UserModel) error {
 	return err
 }
 
-func (client *UserServiceClient) LogIn(usrCrd models.UserCredentials) (models.UserTokensInfo, error) {
+func (client *UserServiceClient) LogIn(usrCrd *models.UserCredentials) (models.UserTokensInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
@@ -74,11 +74,11 @@ func (client *UserServiceClient) LogIn(usrCrd models.UserCredentials) (models.Us
 	}, nil
 }
 
-func (client *UserServiceClient) GetUsrImage(usrId int) (*[]byte, error) {
+func (client *UserServiceClient) GetUsrImage(usrId uint64) (*[]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	avatarInfo, err := client.GetImage(ctx, &pb.GetUserImageRequest{UsrId: uint64(usrId)})
+	avatarInfo, err := client.GetImage(ctx, &pb.GetUserImageRequest{UsrId: usrId})
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +86,11 @@ func (client *UserServiceClient) GetUsrImage(usrId int) (*[]byte, error) {
 	return &avatarInfo.Img, nil
 }
 
-func (client *UserServiceClient) UploadUsrImage(usrId int, img []byte) error {
+func (client *UserServiceClient) UploadUsrImage(usrId uint64, img *[]byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 
-	_, err := client.UploadImage(ctx, &pb.UploadUserImageRequest{UsrId: uint64(usrId), Img: img})
+	_, err := client.UploadImage(ctx, &pb.UploadUserImageRequest{UsrId: usrId, Img: *img})
 	if err != nil {
 		return err
 	}
