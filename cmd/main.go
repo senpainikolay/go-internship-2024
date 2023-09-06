@@ -9,9 +9,10 @@ import (
 )
 
 type Config struct {
-	Host       string `yaml:"HOST"`
-	Port       string `yaml:"PORT"`
-	Enviroment string `yaml:"ENVIRONMENT"`
+	Host        string `yaml:"HOST"`
+	Port        string `yaml:"PORT"`
+	Enviroment  string `yaml:"ENVIRONMENT"`
+	UserSvcPort string `yaml:"SVC_PORT1"`
 }
 
 func main() {
@@ -20,7 +21,7 @@ func main() {
 	router := gin.Default()
 	router.Use(gin.Recovery())
 
-	usrSvcClient := authservice.NewUserServiceClient(config.Port)
+	usrSvcClient := authservice.NewUserServiceClient(config.UserSvcPort)
 	usrController := authservice.NewUserController(*usrSvcClient)
 	authservice.AttachUserAuthRoutesToRouter(router, usrController)
 
