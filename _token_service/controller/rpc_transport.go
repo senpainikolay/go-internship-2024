@@ -15,6 +15,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	ACCESS_TOKEN_EXPIRE_TIME  = time.Minute * 15
+	REFRESH_TOKEN_EXPIRE_TIME = time.Hour * 2
+)
+
 type TokenServer struct {
 	pb.UnimplementedTokenServiceServer
 }
@@ -77,4 +82,33 @@ func parseJwt(tokenStr string, secret_token string) (*jwt.Token, error) {
 	})
 
 	return token, err
+}
+
+func (s *TokenServer) GenerateTokensPair(ctx context.Context, req *pb.GenerateTokenPairRequest) (*pb.GenerateTokenResponse, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":  req.Id,
+		"exp": time.Now().Add(ACCESS_TOKEN_EXPIRE_TIME).Unix(),
+	})
+
+	accessTk, err := token.SignedString([]byte(os.Getenv("SECRET_ACCESS_TOKEN")))
+
+	if err != nil {
+		return &pb.GenerateTokenResponse{}, errors.New("failed to create token")
+	}
+
+	refreshToken := jwt.New(jwt.SigningMethodHS256)
+	rtClaims := refreshToken.Claims.(jwt.MapClaims)
+	rtClaims["sub"] = req.Id
+	rtClaims["exp"] = time.Now().Add(REFRESH_TOKEN_EXPIRE_TIME).Unix()
+
+	rt, err := refreshToken.SignedString([]byte(os.Getenv("SECRET_REFRESH_TOKEN")))
+	if err != nil {
+		return &pb.GenerateTokenResponse{}, err
+	}
+
+	return &pb.GenerateTokenResponse{
+		AccessToken:  accessTk,
+		RefreshToken: rt,
+	}, nil
 }
