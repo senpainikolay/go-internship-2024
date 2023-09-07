@@ -3,16 +3,18 @@ package main
 import (
 	"os"
 	authservice "senpainikolay/go-internship-smartdata/gateway/pkg/auth-service"
+	tokenvalservice "senpainikolay/go-internship-smartdata/gateway/pkg/token-val-service"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	Host        string `yaml:"HOST"`
-	Port        string `yaml:"PORT"`
-	Enviroment  string `yaml:"ENVIRONMENT"`
-	UserSvcPort string `yaml:"SVC_PORT1"`
+	Host            string `yaml:"HOST"`
+	Port            string `yaml:"PORT"`
+	Enviroment      string `yaml:"ENVIRONMENT"`
+	UserSvcPort     string `yaml:"SVC_PORT1"`
+	TokenValSvcPort string `yaml:"SVC_PORT2"`
 }
 
 func main() {
@@ -22,7 +24,9 @@ func main() {
 	router.Use(gin.Recovery())
 
 	usrSvcClient := authservice.NewUserServiceClient(config.UserSvcPort)
-	usrController := authservice.NewUserController(*usrSvcClient)
+	tokenSvcClient := tokenvalservice.NewUserServiceClient(config.TokenValSvcPort)
+
+	usrController := authservice.NewUserController(*usrSvcClient, *tokenSvcClient)
 	authservice.AttachUserAuthRoutesToRouter(router, usrController)
 
 	_ = router.Run(config.Port)

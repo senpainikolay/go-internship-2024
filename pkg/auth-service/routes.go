@@ -3,7 +3,8 @@ package authservice
 import (
 	"io/ioutil"
 	"net/http"
-	"senpainikolay/go-internship-smartdata/gateway/pkg/auth-service/models"
+	"senpainikolay/go-internship-smartdata/gateway/pkg/models"
+	tokenvalservice "senpainikolay/go-internship-smartdata/gateway/pkg/token-val-service"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -18,24 +19,28 @@ const (
 
 type UserController struct {
 	userAuthSvcCllient UserServiceClient
+	TokenValSvcClient  tokenvalservice.TokenValidationServiceClient
 }
 
-func NewUserController(userAuthSvcCllient UserServiceClient) *UserController {
+func NewUserController(userAuthSvcCllient UserServiceClient, tokenSvcClient tokenvalservice.TokenValidationServiceClient) *UserController {
 	return &UserController{
 		userAuthSvcCllient: userAuthSvcCllient,
+		TokenValSvcClient:  tokenSvcClient,
 	}
 }
 
 func AttachUserAuthRoutesToRouter(r *gin.Engine, c *UserController) {
+
 	userRouter := r.Group("/user")
 	{
 
-		userRouter.GET("/me", c.GetById)
+		userRouter.GET("/me", RequireAuth(c), c.GetById)
 		userRouter.POST("/register", c.Register)
 		userRouter.POST("/login", c.LogIn)
-		userRouter.DELETE("/unregister/:id", c.DeleteById)
-		userRouter.PUT("/img", c.UpdateImage)
-		userRouter.GET("/:id/img", c.GetImage)
+		userRouter.DELETE("/unregister/:id", RequireAuth(c), c.DeleteById)
+		userRouter.PUT("/img", RequireAuth(c), c.UpdateImage)
+		userRouter.GET("/:id/img", RequireAuth(c), c.GetImage)
+		userRouter.POST("/refreshToken", RequireAuth(c), c.RefreshToken)
 
 	}
 }
@@ -240,41 +245,41 @@ func (ctrl *UserController) GetImage(c *gin.Context) {
 
 }
 
-// func (ctrl *UserController) RefreshToken(c *gin.Context) {
-// 	refresh_token, err := c.Cookie("Authorization")
-// 	if err != nil {
-// 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-// 			"error":   true,
-// 			"message": err.Error(),
-// 		})
-// 		return
-// 	}
+func (ctrl *UserController) RefreshToken(c *gin.Context) {
+	refresh_token, err := c.Cookie("Authorization")
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
 
-// 	usrId, err := auth.ValidateRefreshToken(refresh_token)
-// 	if err != nil {
-// 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-// 			"error":   true,
-// 			"message": err.Error(),
-// 		})
-// 		return
-// 	}
-// 	newTokens, err := auth.GenerateTokenPair(usrId)
-// 	if err != nil {
-// 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-// 			"error":   true,
-// 			"message": err.Error(),
-// 		})
-// 		return
+	usrJwtInfo, err := ctrl.TokenValSvcClient.ValidateUsrRefreshToken(refresh_token)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
+	}
+	newTokens, err := ctrl.TokenValSvcClient.GenerateUsrTokenPair(uint64(usrJwtInfo.ID))
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error":   true,
+			"message": err.Error(),
+		})
+		return
 
-// 	}
+	}
 
-// 	c.SetSameSite(http.SameSiteLaxMode)
-// 	seconds_to_expire := 3600 * 8
-// 	c.SetCookie("Authorization", newTokens["refresh_token"], seconds_to_expire, "", "", false, true)
+	c.SetSameSite(http.SameSiteLaxMode)
+	seconds_to_expire := 3600 * 8
+	c.SetCookie("Authorization", newTokens.RefreshToken, seconds_to_expire, "", "", false, true)
 
-// 	c.JSON(http.StatusOK, gin.H{
-// 		"token":   newTokens["access_token"],
-// 		"message": "succesfully logged in",
-// 	})
+	c.JSON(http.StatusOK, gin.H{
+		"token":   newTokens.AccesToken,
+		"message": "succesfully logged in",
+	})
 
-// }
+}

@@ -3,8 +3,8 @@ package authservice
 import (
 	"context"
 	"log"
-	"senpainikolay/go-internship-smartdata/gateway/pkg/auth-service/models"
 	pb "senpainikolay/go-internship-smartdata/gateway/pkg/auth-service/pb"
+	"senpainikolay/go-internship-smartdata/gateway/pkg/models"
 	"time"
 
 	"google.golang.org/grpc"

@@ -1,4 +1,5 @@
 HOST: "localhost"
 PORT: ":8888"
 ENVIRONMENT: "local"  
-SVC_PORT1: ":6666"
+SVC_PORT1: ":6666" 
+SVC_PORT2: ":4444"
