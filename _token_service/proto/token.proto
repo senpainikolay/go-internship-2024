@@ -1,0 +1,25 @@
+// protoc --go_out=internal/pb --go_opt=paths=source_relative --go-grpc_out=internal/pb --go-grpc_opt=paths=source_relative internal/proto/user.proto
+
+
+syntax = "proto3";
+package proto;
+ 
+
+option go_package =  "senpainikolay/go-internship-smartdata/auth-service/_token_service";
+
+
+message ValidateTokenRequest { string token =1; }  
+
+message ValidateTokenResponse { 
+    uint64 usr_id =1;
+} 
+
+
+service TokenService {
+    rpc ValidateAccessToken(ValidateTokenRequest) returns (ValidateTokenResponse) {}
+    rpc ValidateRefreshToken(ValidateTokenRequest) returns (ValidateTokenResponse) {}
+  }
+  
+
+
+

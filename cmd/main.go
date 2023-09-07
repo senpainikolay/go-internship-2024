@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	tokenservice "senpainikolay/go-internship-smartdata/auth-service/_token_service/cmd"
 	rpctransport "senpainikolay/go-internship-smartdata/auth-service/internal/controller/rpc-transport"
 	"senpainikolay/go-internship-smartdata/auth-service/internal/models"
 	"senpainikolay/go-internship-smartdata/auth-service/internal/service"
@@ -30,6 +31,11 @@ func main() {
 	userRepo := configRepo()
 	cacheRepo := redisrepo.NewCacheRepository(redis_db)
 	userService := service.NewUserService(userRepo, cacheRepo)
+
+	go func() {
+		log.Printf("starting Token Validation server...\n")
+		tokenservice.RunTokenValidationService()
+	}()
 
 	log.Printf("starting gRPC API server...\n")
 	rpctransport.Serve(userService, ":6666")
